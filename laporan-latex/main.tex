@@ -1,18 +1,10 @@
-% =====================================================================
-% Template Laporan Tugas — Workshop Deep Learning (Teknik Telekomunikasi ITERA)
-% Studi Ablasi RNN, LSTM, GRU vs ANN untuk Prediksi Trafik Seluler
-%
-% Format IEEE conference dua kolom, MAKSIMAL 6 HALAMAN termasuk referensi.
-% Compile: pdflatex main && bibtex main && pdflatex main && pdflatex main
-%          (atau: latexmk -pdf main.tex). Bisa juga diunggah ke Overleaf.
-%
-% Teks bertanda [ ... ] adalah petunjuk: HAPUS dan ganti dengan isi kalian.
-% =====================================================================
 \documentclass[conference,a4paper]{IEEEtran}
 \IEEEoverridecommandlockouts
 
 \usepackage[indonesian]{babel}
 \usepackage[utf8]{inputenc}
+\usepackage{float}
+\usepackage{placeins}
 \usepackage[T1]{fontenc}
 \usepackage{cite}
 \usepackage{amsmath,amssymb}
@@ -23,16 +15,14 @@
 \usepackage[hidelinks]{hyperref}
 \graphicspath{{gambar/}}
 
-% Penanda petunjuk (hapus pemakaiannya di versi akhir)
 \newcommand{\petunjuk}[1]{\textcolor{gray}{[#1]}}
 
 \begin{document}
 
 \title{Studi Ablasi RNN, LSTM, dan GRU dibandingkan ANN untuk Prediksi Trafik Seluler Kota Milan}
 
-% Satu blok per anggota (maks. 3). Hapus blok yang tidak dipakai.
 \author{
-\IEEEauthorblockN{Shintya Linsi Nainggolan}
+ \IEEEauthorblockN{Shintya Linsi Nainggolan}
 \IEEEauthorblockA{NIM 124400049\\
 Teknik Telekomunikasi, ITERA\\
 shintya.124400049@student.itera.ac.id}
@@ -61,13 +51,12 @@ Studi ablasi dilakukan untuk mengidentifikasi pengaruh masing-masing hyperparame
 
 % ---------------------------------------------------------------------
 \section{Data dan Metode}
-
 \subsection{Dataset}
-Penelitian ini menggunakan dataset trafik seluler Kota Milan yang berasal dari Telecom Italia Big Data Challenge \cite{barlacchi2015milan}. Data yang digunakan mencakup periode November--Desember 2013 dengan resolusi waktu satu jam. Dataset memuat informasi aktivitas komunikasi seluler berupa trafik internet (net), panggilan (call), dan pesan singkat (sms). Selain itu, informasi waktu berupa jam dan hari dikonversi menjadi representasi siklik menggunakan fungsi sinus dan kosinus, sehingga diperoleh tujuh fitur, yaitu net, call, sms, jam_sin, jam_cos, hari_sin, dan hari_cos. Variabel net digunakan sebagai target prediksi trafik internet per jam.
+Penelitian ini menggunakan dataset trafik seluler Kota Milan yang berasal dari Telecom Italia Big Data Challenge \cite{barlacchi2015milan}. Data yang digunakan mencakup periode November--Desember 2013 dengan resolusi waktu satu jam. Dataset memuat informasi aktivitas komunikasi seluler berupa trafik internet (net), panggilan (call), dan pesan singkat (sms). Selain itu, informasi waktu berupa jam dan hari dikonversi menjadi representasi siklik menggunakan fungsi sinus dan kosinus, sehingga diperoleh tujuh fitur, yaitu net, call, sms, jam\_sin, jam\_cos, hari\_sin, dan hari\_cos. Variabel net digunakan sebagai target prediksi trafik internet per jam.
 
 Eksperimen dilakukan pada dua lokasi di Kota Milan. Lokasi pertama adalah Duomo dengan nomor kotak 5060 yang digunakan sebagai lokasi acuan untuk pengujian model dan studi ablasi. Lokasi kedua adalah Corso Como dengan kode lokasi kelompok 9 dan nomor kotak 5859 yang digunakan untuk menguji kemampuan generalisasi model. Kedua lokasi digunakan untuk menganalisis perbedaan karakteristik trafik internet serta pengaruhnya terhadap akurasi prediksi.
 
-\begin{figure}[t]
+\begin{figure}[H]
   \centering
   \includegraphics[width=0.85\linewidth]{peta_lokasi_tugas.png}
   \caption{Rata-rata aktivitas internet per kotak di Milan. Lingkaran kuning: lokasi tugas (kode 0--9); lingkaran toska: Duomo.}
@@ -75,16 +64,17 @@ Eksperimen dilakukan pada dua lokasi di Kota Milan. Lokasi pertama adalah Duomo 
 \end{figure}
 
 \subsection{Pembagian Data dan Praproses}
-Dataset dibagi secara kronologis menjadi empat bagian, yaitu data pelatihan pada 11 November hingga 8 Desember 2013, data validasi pada 9--15 Desember 2013, data pengujian pada 16--22 Desember 2013, serta periode Natal mulai 23 Desember 2013. Standardisasi dilakukan menggunakan rata-rata dan simpangan baku yang dihitung dari data sebelum 9 Desember 2013. Statistik tersebut diterapkan pada seluruh fitur agar data validasi dan pengujian tidak memengaruhi perhitungan parameter standardisasi.
 
-Pembentukan data masukan dilakukan menggunakan teknik sliding window, yaitu mengambil W pengamatan sebelumnya untuk memprediksi trafik internet pada H jam berikutnya. Konfigurasi acuan menggunakan panjang jendela 24 jam dengan horizon prediksi satu jam. Setiap sampel dimasukkan ke kelompok data berdasarkan waktu target prediksinya. Pembagian data dilakukan secara kronologis karena pengacakan pembagian deret waktu berisiko menyebabkan kebocoran informasi dari masa depan ke proses pelatihan. Dengan demikian, evaluasi model dapat menggambarkan kemampuan prediksi terhadap data yang terjadi setelah periode pelatihan.
+Dataset dibagi secara kronologis menjadi empat periode, yaitu data pelatihan pada 11 November--8 Desember 2013, data validasi pada 9--15 Desember 2013, data pengujian pada 16--22 Desember 2013, serta periode Natal mulai 23 Desember 2013. Standardisasi dilakukan menggunakan rata-rata dan simpangan baku yang dihitung hanya dari data pelatihan sebelum 9 Desember 2013. Statistik tersebut kemudian diterapkan pada data validasi, pengujian, dan periode Natal agar informasi dari masa depan tidak memengaruhi proses pelatihan.
+
+Pembentukan data masukan menggunakan teknik \textit{sliding window}, yaitu mengambil $W$ pengamatan sebelumnya untuk memprediksi trafik internet pada horizon $H$ jam berikutnya. Konfigurasi acuan menggunakan panjang jendela $W=24$ jam dan horizon prediksi $H=1$ jam. Setiap sampel dikelompokkan berdasarkan waktu target prediksinya. Pembagian data dilakukan secara kronologis tanpa mengacak urutan periode waktu untuk mencegah kebocoran informasi (\textit{data leakage}) dari data masa depan ke proses pelatihan. Dengan demikian, evaluasi model dapat menggambarkan kemampuan prediksi terhadap data yang belum pernah digunakan dalam pelatihan secara lebih realistis.
 
 \subsection{Model dan Konfigurasi Acuan}
 Penelitian ini membandingkan empat arsitektur jaringan saraf, yaitu Artificial Neural Network (ANN), Recurrent Neural Network (RNN), Long Short-Term Memory (LSTM), dan Gated Recurrent Unit (GRU). ANN digunakan sebagai model pembanding yang mempelajari hubungan antarfitur tanpa mekanisme memori rekuren. RNN memproses data secara berurutan dengan memanfaatkan informasi dari langkah waktu sebelumnya. LSTM menggunakan mekanisme gerbang untuk mempertahankan informasi penting dalam urutan yang panjang, sedangkan GRU menerapkan mekanisme gerbang yang lebih sederhana untuk mengatur aliran informasi.
 
 Keempat model diuji menggunakan konfigurasi acuan yang mencakup panjang jendela waktu, horizon prediksi, jumlah hidden unit, jumlah lapisan, fitur masukan, optimizer, learning rate, batch size, dan early stopping. Konfigurasi tersebut digunakan sebagai dasar perbandingan sebelum dilakukan studi ablasi. Rincian hyperparameter acuan disajikan pada Tabel~\ref{tab:acuan}.
 
-\begin{table}[t]
+\begin{table}[H]
   \centering
   \caption{Konfigurasi acuan}
   \label{tab:acuan}
@@ -119,7 +109,7 @@ Setiap konfigurasi dijalankan menggunakan tiga random seed (0, 1, dan 2). Hasil 
 \subsection{Baseline Naif dan Acuan}
 Eksperimen awal dilakukan pada lokasi Duomo untuk membandingkan tiga metode baseline naif dengan empat model pembelajaran mendalam, yaitu ANN, RNN, LSTM, dan GRU. Baseline naif terdiri atas prediksi berdasarkan nilai pada hari sebelumnya, minggu sebelumnya, dan nilai terakhir yang diamati. Perbandingan utama menggunakan horizon prediksi satu jam sesuai konfigurasi acuan. Hasil evaluasi ditampilkan pada Tabel~\ref{tab:baseline}.
 
-\begin{table}[t]
+\begin{table}[H]
 \centering
 \caption{Perbandingan baseline naif dan model acuan pada lokasi Duomo (horizon 1 jam)}
 \label{tab:baseline}
@@ -147,29 +137,54 @@ Pada data validasi, RNN juga memperoleh MAE terendah sebesar 206,1, meskipun nil
 
 \subsection{Ablasi Wajib}
 
-% =====================================================
-% GRAFIK GABUNGAN A1--A5 DARI HASIL ASLI JUPYTER
-% =====================================================
-
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=0.47\textwidth]{A1_W.png}\hfill
-\includegraphics[width=0.47\textwidth]{A2_hidden.png}
-\par\smallskip
-\includegraphics[width=0.47\textwidth]{A2_MAE_vs_param.png}\hfill
-\includegraphics[width=0.47\textwidth]{A3_layers.png}
-\par\smallskip
-\includegraphics[width=0.47\textwidth]{A4_lr.png}\hfill
-\includegraphics[width=0.47\textwidth]{A5_fitur.png}
-\caption{Hasil ablasi wajib A1--A5 berdasarkan grafik eksperimen: (a) panjang jendela, (b) ukuran hidden, (c) MAE terhadap jumlah parameter, (d) jumlah lapisan, (e) learning rate, dan (f) kelompok fitur.}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.2}
+
+\begin{tabular}{@{}cc@{}}
+
+% A1 - Panjang Jendela
+\includegraphics[width=0.45\textwidth,height=3cm,keepaspectratio]{gambar/A1_W.png}
+&
+\includegraphics[width=0.45\textwidth,height=3cm,keepaspectratio]{gambar/A2_hidden.png}
+\\
+
+{\footnotesize\textbf{Gambar 2(a).} A1: Pengaruh Panjang Jendela $W$}
+&
+{\footnotesize\textbf{Gambar 2(b).} A2: Pengaruh Ukuran Hidden}
+\\[2mm]
+
+% A2 - Jumlah Parameter dan A3 - Jumlah Lapisan
+\includegraphics[width=0.45\textwidth,height=3cm,keepaspectratio]{gambar/A2_MAE_vs_param.png}
+&
+\includegraphics[width=0.45\textwidth,height=3cm,keepaspectratio]{gambar/A3_layers.png}
+\\
+
+{\footnotesize\textbf{Gambar 2(c).} A2: MAE Validasi vs Jumlah Parameter}
+&
+{\footnotesize\textbf{Gambar 2(d).} A3: Pengaruh Jumlah Lapisan}
+\\[2mm]
+
+% A4 - Learning Rate dan A5 - Kelompok Fitur
+\includegraphics[width=0.45\textwidth,height=3cm,keepaspectratio]{gambar/A4_lr.png}
+&
+\includegraphics[width=0.45\textwidth,height=3cm,keepaspectratio]{gambar/A5_fitur.png}
+\\
+
+{\footnotesize\textbf{Gambar 2(e).} A4: Pengaruh Learning Rate}
+&
+{\footnotesize\textbf{Gambar 2(f).} A5: Pengaruh Kelompok Fitur}
+
+\end{tabular}
+
+\caption{Hasil studi ablasi wajib A1--A5 yang memperlihatkan pengaruh panjang jendela, ukuran hidden, jumlah parameter, jumlah lapisan, learning rate, dan kelompok fitur terhadap kinerja model ANN, RNN, LSTM, dan GRU.}
 \label{fig:ablasiA}
+\label{fig:ablasi_wajib}
+
 \end{figure*}
 
-% =====================================================
-% TABEL HASIL EKSPERIMEN A1
-% =====================================================
-
-\begin{table}[!t]
+\begin{table}[H]
 \centering
 \caption{Test MAE pada variasi panjang jendela di Duomo (rata-rata $\pm$ simpangan baku, tiga seed)}
 \label{tab:ablasiA1}
@@ -189,19 +204,11 @@ $W$ (jam) & ANN & RNN & LSTM & GRU \\
 }
 \end{table}
 
-% =====================================================
-% A1 - PANJANG JENDELA
-% =====================================================
-
 \subsubsection{A1: Panjang Jendela}
 
-Berdasarkan Gambar~\ref{fig:ablasiA}(a) dan Tabel~\ref{tab:ablasiA1}, panjang jendela $W=\{6,12,24,48,168\}$ jam yang semakin besar tidak selalu meningkatkan akurasi prediksi. ANN menjadi model paling sensitif karena Test MAE meningkat dari 271,1 pada $W=6$ menjadi 402,0 pada $W=168$. Jumlah parameter ANN juga meningkat dari 2.465 menjadi 38.753, sehingga kompleksitas model dan risiko \textit{overfitting} bertambah. Sebaliknya, model rekuren memiliki jumlah parameter tetap karena bobot digunakan berulang pada setiap langkah waktu. RNN mencapai Test MAE terendah sebesar 224,5 pada $W=48$.
+Berdasarkan Gambar~\ref{fig:ablasiA}(a) dan Tabel~\ref{tab:ablasiA1},, panjang jendela $W=\{6,12,24,48,168\}$ jam yang semakin besar tidak selalu meningkatkan akurasi prediksi. ANN menjadi model paling sensitif karena Test MAE meningkat dari 271,1 pada $W=6$ menjadi 402,0 pada $W=168$. Jumlah parameter ANN juga meningkat dari 2.465 menjadi 38.753, sehingga kompleksitas model dan risiko \textit{overfitting} bertambah. Sebaliknya, model rekuren memiliki jumlah parameter tetap karena bobot digunakan berulang pada setiap langkah waktu. RNN mencapai Test MAE terendah sebesar 224,5 pada $W=48$.
 
 Hasil ini sejalan dengan eksperimen pengaruh setiap jam masukan pada Workshop Deep Learning Sesi 2. Pengaruh masukan dari 24 jam sebelumnya hanya sekitar 1\%, sedangkan dari 168 jam sebelumnya mendekati nol. Dengan demikian, informasi historis yang lebih panjang tidak selalu memberikan manfaat tambahan untuk prediksi trafik satu jam ke depan.
-
-% =====================================================
-% A2 - UKURAN HIDDEN
-% =====================================================
 
 \subsubsection{A2: Ukuran Hidden}
 
@@ -209,29 +216,17 @@ Berdasarkan Gambar~\ref{fig:ablasiA}(b), peningkatan ukuran \textit{hidden} tida
 
 Perbandingan MAE terhadap jumlah parameter pada Gambar~\ref{fig:ablasiA}(c) memperlihatkan bahwa ukuran \textit{hidden} yang sama tidak menghasilkan kompleksitas setara. Pada \textit{hidden} 64, LSTM mempunyai 18.753 parameter, sedangkan RNN hanya 4.737 parameter. Walaupun memiliki parameter lebih banyak, Validation MAE LSTM sebesar 218,1 masih lebih tinggi daripada RNN sebesar 207,2. Dengan jumlah data latih sekitar 672 sampel, model yang lebih kompleks tidak selalu menghasilkan generalisasi lebih baik.
 
-% =====================================================
-% A3 - JUMLAH LAPISAN
-% =====================================================
-
 \subsubsection{A3: Jumlah Lapisan}
 
 Berdasarkan Gambar~\ref{fig:ablasiA}(d), penambahan jumlah lapisan rekuren tidak selalu meningkatkan akurasi. LSTM mengalami penurunan kinerja terbesar ketika jumlah lapisan bertambah dari satu menjadi tiga, dengan Validation MAE meningkat dari 230,5 menjadi 338,9 dan Test MAE dari 273,6 menjadi 412,6. Pada RNN, Validation MAE juga meningkat dari 206,1 menjadi 225,1.
 
 Rata-rata jumlah \textit{epoch} RNN menurun dari 163,7 pada satu lapisan menjadi 96,0 pada tiga lapisan. Kondisi ini menunjukkan bahwa model lebih dalam berhenti lebih awal, tetapi belum cukup untuk memastikan terjadinya \textit{overfitting} tanpa membandingkan kurva \textit{loss} pelatihan dan validasi. Penambahan lapisan juga meningkatkan kompleksitas dan dapat mempersulit proses optimasi.
 
-% =====================================================
-% A4 - LEARNING RATE
-% =====================================================
-
 \subsubsection{A4: Learning Rate}
 
 Gambar~\ref{fig:ablasiA}(e) menunjukkan bahwa perubahan \textit{learning rate} memengaruhi akurasi dan kestabilan pelatihan. Pada nilai $10^{-4}$, seluruh model mencapai batas maksimum 300 \textit{epoch} dengan Validation MAE yang relatif tinggi. Hal ini mengindikasikan bahwa proses optimasi kemungkinan belum mencapai konvergensi yang baik karena pembaruan parameter terlalu kecil.
 
 Pada \textit{learning rate} $10^{-2}$, LSTM memperoleh Validation MAE sebesar 215,9, lebih rendah daripada 230,5 pada $10^{-3}$. Sebaliknya, RNN mengalami kenaikan Validation MAE dari 206,1 menjadi 224,3. Nilai \textit{learning rate} yang besar juga dapat meningkatkan variasi hasil antar-\textit{seed}, seperti simpangan baku Test MAE ANN yang meningkat dari 9,9 menjadi 53,2. Dengan demikian, pemilihan \textit{learning rate} perlu mempertimbangkan karakteristik masing-masing model.
-
-% =====================================================
-% A5 - KELOMPOK FITUR
-% =====================================================
 
 \subsubsection{A5: Kelompok Fitur}
 
@@ -240,6 +235,7 @@ Berdasarkan Gambar~\ref{fig:ablasiA}(f), penambahan fitur waktu berupa informasi
 Dibandingkan penggunaan \texttt{net} saja, penambahan fitur waktu menurunkan Validation MAE sebesar 15,3 pada ANN, 22,2 pada RNN, 35,1 pada LSTM, dan 51,4 pada GRU. Dengan demikian, ketiga model rekuren memperoleh perbaikan validasi yang lebih besar daripada ANN dari fitur waktu. Meskipun model rekuren membaca urutan data secara langsung, fitur jam dan hari tetap membantu mengenali pola periodik trafik. Namun, peningkatan hasil validasi tidak selalu diikuti peningkatan pada data pengujian, sehingga keduanya tetap perlu diperhatikan.
 
 
+\FloatBarrier
 \subsection{Ablasi Pilihan}
 
 Dua faktor tambahan yang dipilih adalah \textit{batch size} (B1) dan \textit{dropout} (B2). Faktor B1 digunakan untuk mengetahui pengaruh ukuran batch terhadap akurasi dan waktu pelatihan, sedangkan B2 digunakan untuk mengevaluasi efektivitas regularisasi dalam meningkatkan generalisasi. Setiap konfigurasi diuji menggunakan tiga \textit{random seed}, dan hasil dibandingkan berdasarkan rata-rata MAE validasi dan pengujian.
@@ -267,7 +263,7 @@ Konfigurasi terbaik setiap model dipilih berdasarkan rata-rata \textit{Validatio
 
 Berdasarkan seluruh percobaan C, konfigurasi terpilih adalah ANN dengan $W=6$, \textit{hidden}=128, satu lapisan, fitur \texttt{net+waktu}, dan \textit{batch size}=16; RNN dengan $W=48$ dan parameter lainnya mengikuti acuan; LSTM dengan \textit{hidden}=128 dan \textit{batch size}=16; serta GRU dengan \textit{hidden}=128 dan parameter lainnya mengikuti acuan. Konfigurasi ANN berasal dari C awal, RNN dan GRU dari C-coba1, sedangkan LSTM dari C-coba2. Pemilihan tersebut didasarkan pada Validation MAE masing-masing sebesar 212,4; 200,1; 204,3; dan 188,7. Pada C-coba2, Validation MAE RNN sebesar 209,5 dan GRU sebesar 204,4 masih lebih tinggi daripada hasil C-coba1 sehingga tidak dipilih.
 
-\begin{table}[!t]
+\begin{table}[H]
 \centering
 \caption{Perbandingan MAE konfigurasi acuan dan terbaik pada Duomo (rata-rata $\pm$ simpangan baku, tiga seed)}
 \label{tab:terbaikC}
@@ -298,25 +294,24 @@ Berdasarkan Tabel~\ref{tab:terbaikC}, seluruh konfigurasi terpilih menunjukkan p
 Pada periode Natal, seluruh konfigurasi terpilih tetap menghasilkan MAE lebih rendah daripada acuan masing-masing, tetapi urutan kinerjanya berubah. RNN menjadi model terbaik dengan Natal MAE 404,5, diikuti GRU sebesar 435,2, LSTM sebesar 464,3, dan ANN sebesar 563,5. Sebagai pembanding, baseline naif nilai terakhir menghasilkan Natal MAE 431,2. Dengan demikian, hanya RNN terbaik yang mengungguli baseline naif terbaik tersebut, sedangkan GRU masih sedikit lebih tinggi. Hasil ini menunjukkan bahwa model dengan MAE validasi atau pengujian terendah tidak selalu menjadi yang paling akurat pada periode Natal, ketika pola trafik dapat berbeda dari periode sebelumnya.
 
 \subsection{Uji Generalisasi}
-Uji generalisasi dilakukan pada lokasi Corso Como (kode 9, grid 5859) menggunakan konfigurasi acuan dan konfigurasi terbaik final yang diperoleh dari Bagian C di Duomo. Setiap model dilatih ulang pada data Corso Como dengan hiperparameter yang tetap dan menggunakan tiga \textit{random seed}. Pengujian bertujuan mengetahui apakah konfigurasi terbaik dari Duomo tetap memberikan kinerja yang baik pada lokasi dengan karakteristik trafik berbeda.
+Uji generalisasi dilakukan pada Corso Como (lokasi 9, grid 5859) menggunakan konfigurasi acuan dan konfigurasi terbaik yang diperoleh dari Duomo pada Bagian C. Setiap model dilatih ulang menggunakan tiga random seed dengan hiperparameter yang tetap untuk mengetahui kemampuan konfigurasi tersebut pada lokasi dengan karakteristik trafik berbeda.
 
-Hasil pengujian menunjukkan bahwa urutan kinerja model mengalami perubahan. Pada konfigurasi acuan di Corso Como, GRU memperoleh Test MAE terendah sebesar 125,2, diikuti RNN 127,8, LSTM 142,6, dan ANN 148,2. Setelah menggunakan konfigurasi terbaik, RNN menjadi model paling akurat dengan Test MAE 124,1, diikuti LSTM 125,9, GRU 127,1, dan ANN 129,3. Pada Duomo, GRU merupakan model terbaik dengan Test MAE 220,3. Dengan demikian, urutan kinerja model tidak selalu sama antar lokasi. Seluruh model pada Corso Como juga menghasilkan Test MAE lebih rendah daripada baseline naif terbaik, yaitu metode nilai terakhir dengan MAE 168,4.
+Hasil pengujian menunjukkan adanya perubahan urutan kinerja model. Pada konfigurasi acuan, GRU menghasilkan Test MAE terendah sebesar 125,2, diikuti RNN 127,8, LSTM 142,6, dan ANN 148,2. Setelah menggunakan konfigurasi terbaik, RNN menjadi model paling akurat dengan Test MAE 124,1, diikuti LSTM 125,9, GRU 127,1, dan ANN 129,3. Berbeda dengan Duomo yang menempatkan GRU sebagai model terbaik dengan Test MAE 220,3, hasil ini menunjukkan bahwa keunggulan suatu arsitektur tidak selalu konsisten pada lokasi berbeda.
 
-Perbandingan konfigurasi menunjukkan bahwa Test MAE ANN menurun dari 148,2 menjadi 129,3, RNN dari 127,8 menjadi 124,1, dan LSTM dari 142,6 menjadi 125,9. Sebaliknya, GRU sedikit memburuk dari 125,2 menjadi 127,1. Berdasarkan grafik pola trafik pada notebook, Duomo menunjukkan aktivitas harian yang lebih tinggi dan relatif berulang, sedangkan Corso Como mengalami perubahan tingkat trafik yang cukup besar pada awal Desember dan cenderung memiliki aktivitas lebih rendah setelahnya. Perbedaan karakteristik tersebut dapat memengaruhi kemampuan generalisasi sehingga konfigurasi terbaik pada Duomo belum tentu memberikan peningkatan yang sama pada Corso Como.
+Dibandingkan konfigurasi acuan, Test MAE ANN menurun dari 148,2 menjadi 129,3, RNN dari 127,8 menjadi 124,1, dan LSTM dari 142,6 menjadi 125,9. Sebaliknya, GRU mengalami sedikit peningkatan kesalahan dari 125,2 menjadi 127,1. Berdasarkan grafik trafik, Duomo memiliki aktivitas harian yang relatif tinggi dan berulang, sedangkan Corso Como menunjukkan perubahan tingkat aktivitas yang cukup besar pada awal Desember dan cenderung lebih rendah setelahnya. Perbedaan pola trafik tersebut dapat memengaruhi kemampuan model dalam mempelajari hubungan temporal, sehingga konfigurasi terbaik di Duomo belum tentu optimal di Corso Como.
 
-Pada periode Natal, GRU terbaik memperoleh Natal MAE terendah di antara model pembelajaran mendalam, yaitu 214,2 dibandingkan 273,9 pada konfigurasi acuan. LSTM juga mengalami perbaikan dari 403,6 menjadi 381,1. Sebaliknya, ANN mengalami peningkatan Natal MAE dari 248,2 menjadi 276,7 dan RNN dari 255,0 menjadi 263,9. Baseline naif nilai terakhir menghasilkan Natal MAE sebesar 101,6, lebih rendah daripada seluruh model pembelajaran mendalam. Dengan demikian, konfigurasi terbaik dari Duomo tidak selalu meningkatkan kinerja secara konsisten di lokasi lain, terutama pada periode dengan perubahan pola trafik seperti Natal.
+Pada periode Natal, GRU terbaik menghasilkan Natal MAE terendah di antara model pembelajaran mendalam, yaitu 214,2. Namun, baseline naif nilai terakhir memperoleh Natal MAE 101,6, lebih rendah daripada seluruh model pembelajaran mendalam. Hasil ini memperlihatkan bahwa generalisasi model masih terbatas ketika terjadi perubahan pola trafik, terutama pada periode Natal.
 
 % ---------------------------------------------------------------------
 \section{Pembahasan}
-Hasil studi ablasi menunjukkan bahwa perubahan hiperparameter tidak memberikan pengaruh yang sama pada setiap arsitektur. Panjang jendela menjadi salah satu faktor paling berpengaruh terhadap ANN karena seluruh data historis diratakan menjadi masukan jaringan. Ketika jendela diperpanjang, jumlah parameter ANN meningkat sehingga model harus mempelajari lebih banyak bobot dari jumlah data latih yang tetap. Kondisi tersebut dapat memperbesar risiko overfitting dan menjelaskan mengapa penambahan riwayat justru menurunkan akurasi ANN. Sebaliknya, RNN, LSTM, dan GRU menggunakan bobot berulang pada setiap langkah waktu sehingga jumlah parameternya tidak bertambah ketika jendela diperpanjang. Namun, jendela panjang tetap dapat menyulitkan pembelajaran informasi yang relevan karena tidak seluruh data historis memberikan kontribusi penting terhadap prediksi.
+Hasil studi ablasi menunjukkan bahwa pengaruh hiperparameter berbeda pada setiap arsitektur. Faktor yang paling menonjol adalah panjang jendela pada ANN, jumlah lapisan pada LSTM, serta pemilihan kelompok fitur. Pada ANN, jendela yang lebih panjang meningkatkan jumlah parameter karena seluruh data historis dijadikan masukan jaringan. Hal ini memperbesar kompleksitas dan risiko \textit{overfitting}, sehingga dapat menjelaskan penurunan akurasi. Sebaliknya, RNN, LSTM, dan GRU menggunakan bobot berulang yang jumlahnya tidak bertambah seiring panjang jendela, meskipun informasi historis berlebihan tetap dapat menyulitkan pembelajaran. Penambahan fitur waktu membantu model mengenali pola harian dan mingguan trafik, sehingga memberikan informasi yang tidak diperoleh dari nilai trafik sebelumnya saja.
 
-Ukuran hidden, jumlah lapisan, dan learning rate juga menunjukkan bahwa kompleksitas model harus disesuaikan dengan ketersediaan data dan proses optimasi. Ukuran hidden yang lebih besar meningkatkan kapasitas representasi, tetapi tidak menjamin generalisasi lebih baik. Pada LSTM, penambahan lapisan memperburuk kinerja, yang dapat disebabkan oleh meningkatnya kesulitan optimasi dan kompleksitas model pada data latih terbatas. Learning rate terlalu kecil menyebabkan pembaruan parameter berlangsung lambat sehingga pelatihan dapat mencapai batas epoch sebelum memperoleh solusi yang baik. Sebaliknya, learning rate terlalu besar dapat menghasilkan pembaruan yang kurang stabil. Temuan ini menunjukkan bahwa model yang lebih dalam atau lebih besar tidak selalu lebih sesuai untuk prediksi trafik pada dataset yang digunakan.
+Ukuran hidden, jumlah lapisan, dan learning rate memperlihatkan bahwa kompleksitas model tidak selalu sebanding dengan akurasi. Penambahan lapisan pada LSTM memperburuk kinerja, yang dapat berkaitan dengan meningkatnya kesulitan optimasi pada data latih terbatas. Ukuran hidden yang lebih besar juga tidak selalu meningkatkan generalisasi, sedangkan learning rate terlalu kecil dapat memperlambat konvergensi dan nilai terlalu besar berpotensi menyebabkan pembaruan parameter kurang stabil. Dibandingkan faktor tersebut, pengaruh batch size dan dropout cenderung kurang konsisten antararsitektur. Batch kecil dapat meningkatkan akurasi tetapi membutuhkan waktu pelatihan lebih panjang. Sementara itu, dropout sedang membantu beberapa model, tetapi dapat memperburuk hasil ketika informasi yang dibutuhkan ikut dihilangkan, terutama pada model dengan dua lapisan.
 
-Eksperimen batch size dan dropout memperlihatkan adanya kompromi antara akurasi, efisiensi pelatihan, dan regularisasi. Batch kecil memungkinkan pembaruan parameter lebih sering, tetapi membutuhkan waktu pelatihan lebih panjang. Sementara itu, dropout sedang dapat membantu beberapa model dengan mengurangi ketergantungan terhadap aktivasi tertentu, tetapi juga dapat menghilangkan informasi yang masih dibutuhkan ketika data latih terbatas. Hal ini dapat menjelaskan mengapa dropout tidak selalu membantu, terutama pada percobaan dua lapisan. Selain itu, kontribusi fitur waktu menunjukkan pentingnya karakteristik periodik trafik seluler. Informasi jam dan hari membantu model membedakan periode aktivitas tinggi dan rendah, sehingga pola harian dan mingguan lebih mudah dikenali daripada hanya menggunakan nilai trafik sebelumnya.
+Perbedaan kinerja antarmodel perlu dibandingkan dengan variasi antar-seed. Pada konfigurasi acuan, Test MAE ANN sebesar $313{,}9 \pm 9{,}9$ dan RNN sebesar $229{,}6 \pm 5{,}1$, sehingga selisih keduanya jauh lebih besar daripada simpangan bakunya. Sebaliknya, perbedaan RNN dan GRU ($237{,}2 \pm 9{,}3$) relatif kecil dibandingkan variasi antar-seed, sehingga keunggulan RNN belum dapat dipastikan secara statistik. Uji generalisasi juga memperlihatkan perubahan model terbaik dari GRU di Duomo menjadi RNN di Corso Como. Perbedaan pola aktivitas dan distribusi trafik antarlokasi dapat menjelaskan perubahan tersebut. Pada periode Natal, baseline naif bahkan mengungguli model pembelajaran mendalam, menunjukkan bahwa kompleksitas model tidak selalu menguntungkan ketika pola trafik berubah.
 
-Perbedaan antararsitektur perlu dipertimbangkan bersama variasi hasil antar-seed. Pada konfigurasi acuan, perbedaan Test MAE ANN dan RNN jauh lebih besar daripada simpangan baku hasil keduanya, sedangkan selisih RNN dan GRU relatif kecil dibandingkan variasi antar-seed. Artinya, tidak semua perbedaan rata-rata menunjukkan keunggulan yang konsisten. Hasil generalisasi juga memperlihatkan bahwa konfigurasi terbaik pada Duomo tidak selalu menghasilkan peringkat yang sama di Corso Como. Hal ini dapat berkaitan dengan perbedaan tingkat aktivitas, pola periodik, dan perubahan distribusi trafik antarlokasi. Pada periode Natal, baseline naif bahkan dapat mengungguli model pembelajaran mendalam, sehingga kompleksitas model tidak selalu memberikan keuntungan ketika karakteristik data berubah.
+Keterbatasan studi ini meliputi penggunaan data dari satu kota, periode pelatihan sekitar empat minggu, satu pembagian waktu pelatihan-validasi-pengujian, serta evaluasi pada dua lokasi. Penggunaan tiga random seed membantu menggambarkan variasi hasil, tetapi belum cukup untuk memastikan signifikansi perbedaan antarmodel. Penelitian selanjutnya dapat menggunakan data lebih panjang, lokasi lebih beragam, dan beberapa pembagian waktu untuk menguji kestabilan serta kemampuan generalisasi model.
 
-Keterbatasan studi ini adalah penggunaan data dari satu kota dengan periode pelatihan sekitar empat minggu, satu pembagian waktu pelatihan-validasi-pengujian, dan evaluasi pada dua lokasi. Penggunaan tiga random seed membantu menggambarkan variasi hasil, tetapi belum cukup untuk memastikan signifikansi perbedaan antarmodel. Selain itu, perubahan pola trafik pada periode Natal membatasi kemampuan model dalam mempertahankan akurasi. Penelitian selanjutnya dapat menggunakan rentang data lebih panjang, lebih banyak lokasi, serta evaluasi dengan beberapa pembagian waktu untuk menguji kestabilan dan kemampuan generalisasi model.
 
 % ---------------------------------------------------------------------
 
@@ -325,16 +320,22 @@ Studi ablasi menunjukkan bahwa pemilihan hiperparameter berpengaruh terhadap aku
 
 
 % ---------------------------------------------------------------------
+
 \section*{Kontribusi Anggota}
-\begin{tabular}{@{}lp{0.62\linewidth}@{}}
-  Shintya Linsi Nainggolan & Pengolahan data, eksperimen A1--A5 dan B1--B2, pemilihan konfigurasi terbaik, uji generalisasi, analisis hasil, serta penyusunan laporan. \\
+\begin{tabular}{@{}p{0.34\linewidth}@{\hspace{6pt}}p{0.59\linewidth}@{}}
+{\raggedright Shintya Linsi\newline Nainggolan\par}
+&
+{\raggedright Pengolahan data, eksperimen A1--A5 dan B1--B2, pemilihan konfigurasi terbaik, uji generalisasi, analisis hasil, serta penyusunan laporan.\par}
+\\
 \end{tabular}
+
 
 \section*{Pernyataan Penggunaan AI}
 ChatGPT digunakan sebagai alat bantu dalam memahami konsep deep learning, menyusun dan memperbaiki kode Python, membantu interpretasi hasil eksperimen, serta merapikan penulisan laporan dalam format LaTeX.
 
 \section*{Kode dan Data}
-Kode, notebook beserta output, dan seluruh hasil run tersedia di \url{https://github.com/username/nama-repo}.
+Kode, notebook beserta output, hasil eksperimen, dan sumber laporan LaTeX tersedia di \url{https://github.com/shintya124400049-ai/dlw-tugas-ra-124400049}.
+
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}
